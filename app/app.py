@@ -1,105 +1,48 @@
-from fastapi import FastAPI, Depends
-from fastapi.staticfiles import StaticFiles
-import mysql.connector
-from datetime import datetime
-from fastapi.responses import HTMLResponse
-from dotenv import load_dotenv
+import sys
 import os
-import time
+from typing import Dict, Union, List
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts')))
+from config import ConfigDB ,Session
+from fastapi import FastAPI, Form
+from models import News, Url
+import subprocess
 
-# Create the FastAPI app
+
 app = FastAPI()
 
-# Set up the database connection
-load_dotenv()
 
-host = os.environ.get('MYSQL_HOST')
-user = os.environ.get('MYSQL_USER')
-password = os.environ.get('MYSQL_PASSWORD')
-database = os.environ.get('MYSQL_DATABASE')
+def is_running(script_name: str) -> Dict[str, Union[str, bool]]:
+    pidfile = f"/tmp/{script_name}.pid"
+    return {"name": script_name, "status": os.path.isfile(pidfile)}
 
-try:
-    db = mysql.connector.connect(user=user, password=password,
-                                host=host,
-                                database=database)
 
-except mysql.connector.Error as err:
-    db = None
-    print(f"Error connecting to database: {err}")
 
-# Define a function to get a database cursor
-def get_cursor():
-    while True:
-        try:
-            db = mysql.connector.connect(user=user, password=password,
-                                          host=host, database=database)
-            cursor = db.cursor(dictionary=True)
-            yield cursor
-            cursor.close()
-            db.close()
-            break  # exit the loop if the connection was successful
-        except mysql.connector.Error as e:
-            print(f"Failed to connect to database: {e}. Retrying in 5 seconds...")
-            time.sleep(5)  
 
-# Mount the static files directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Serve the index.html file
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    with open("static/index.html", "r") as f:
-        return f.read()
+@app.get("/web/search/{query}", response_model=List[News])
+async def search(query: str) -> List[News]:
+    # create session
+    session = Session()
+    # query for matching records in heading, content and id columns
+    results = session.query(News).filter(
+        (News.heading.like(f"%{query}%")) |
+        (News.content.like(f"%{query}%")) |
+        (News.id.like(f"%{query}%"))
+    ).all()
+    # close session
+    session.close()
+    # return list of news objects
+    return results
 
-# Define the API route to fetch news
-@app.get("/news")
-async def get_news(cursor=Depends(get_cursor)):
-    try:
-        cursor.execute("SELECT * FROM news")
-        news = cursor.fetchall()
-        return [{"heading": n["heading"], "content": n["content"], "image_url": n["image_url"],"source_tag": n["source_tag"]} for n in news]
 
-    except mysql.connector.Error as err:
-        print(f"Error executing query: {err}")
-        return []
+@app.get("/web/status")
+def status():
+    scripts = ["manorama_scraper", "url_extractor",
+               "asianet_scraper", "mathrubhumi_scraper"]
+    status_list = [is_running(script) for script in scripts]
+    db = False
+    if ConfigDB().db_connector():
+        db = True
+    return {"scripts": status_list, "DB_status": db}
 
-def get_crawler_status(crawler_name):
-    try:
-        with open(f"../scripts/{crawler_name}.log", "r") as f:
-            lines = f.readlines()
-            status = "".join(lines[-5:])
-    except FileNotFoundError:
-        status = f"{crawler_name} log file not found"
-    
-    return status
-
-@app.get("/status")
-async def get_status():
-    # Check the status of the database connection
-    if db is None:
-        db_status = "Not connected to database"
-    else:
-        try:
-            db.is_connected()
-            db_status = "Connected to MySQL database"
-        
-        except mysql.connector.Error as err:
-            db_status = f"Error connecting to database: {err}"
-    
-
-   # Check the status of the crawlers
-    scraper1_status = get_crawler_status("crawler1")
-    scraper2_status = get_crawler_status("crawler2")
-    scraper3_status = get_crawler_status("crawler3")
-    # Create a dictionary with the status information
-    status_dict = {
-        "database": db_status,
-        "scraper1": scraper1_status,
-        "scraper2": scraper2_status,
-        "scraper3": scraper3_status,
-        "timestamp": str(datetime.now())
-    }
-
-    # Return the status dictionary as a JSON response
-    return status_dict
 

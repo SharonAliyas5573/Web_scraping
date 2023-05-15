@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "86:8080"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - scripts  
+    networks:
+      - my-net
+  db:
+    image: mysql:debian
+    restart: always
+    ports:
+      - "3308:3306"
+    env_file:
+      - .env
+    volumes:
+      - sql-db-storage:/var/lib/mysql
+    networks:
+      - my-net      
+  scripts:
+    build: scripts/
+    volumes:
+      - ./scripts:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - my-net
+volumes:
+  sql-db-storage:
+  
+
+networks:
+  my-net:
+    driver: bridge
+    ipam:
+        driver: default
+        config:
+          - subnet: 172.20.0.0/16
+
