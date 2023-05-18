@@ -4,7 +4,7 @@ from database import Base
 class News(Base):
     __tablename__ = 'news'
     id = Column(Integer, primary_key=True, default=None)
-    heading = Column(String(255))
+    heading = Column(String(255),unique=True)
     content = Column(Text)
     image_url = Column(String(255))
     publish_date = Column(DateTime)
@@ -13,4 +13,4 @@ class News(Base):
 class Url(Base):
     __tablename__ = "urls"
     id = Column(Integer, primary_key=True,default=None)
-    url = Column(String(200))
+    url = Column(String(200),unique=True)

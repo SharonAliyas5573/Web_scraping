@@ -1,23 +1,25 @@
-from sqlalchemy.orm import Session
-from config import get_db
-from models import Url
+import redis
+
+redis_host = 'redis'  # Use the service name as the hostname since both containers are in the same Docker network
+redis_port = 6379  # Default Redis port
+
+redis_client = redis.Redis(host=redis_host, port=redis_port)
 
 
-def test_insert_url():
-    # Get a database session
-    db: Session = get_db()
+def test_redis():
+    # Set a key-value pair in Redis
+    redis_client.set('test_key', 'test_value')
 
-    # Create a new URL object
-    url = Url(url="http://example.com")
+    # Get the value of the key from Redis
+    value = redis_client.get('test_key')
 
-    # Add the URL to the session and commit it to the database
-    db.add(url)
-    db.commit()
+    # Decode the value if it's in bytes
+    if value is not None:
+        value = value.decode()
 
-    # Close the session
-    db.close()
+    # Print the value
+    print(f'The value of the key  is: {value}')
 
 
-if __name__ == '__main__':
-    test_insert_url()
-    print("Test successful!")
+# Run the test
+test_redis()
