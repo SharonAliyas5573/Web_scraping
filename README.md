@@ -5,8 +5,9 @@
 
 
 ## Prerequisites
-- [Docker] - [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-- [Docker Compose:] - [https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04)
+
+- [Docker](https://docs.docker.com/engine/install/)
+- [Docker Compose](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04)
 
 ## Getting started
 
